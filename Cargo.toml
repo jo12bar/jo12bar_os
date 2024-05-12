@@ -4,11 +4,14 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
-[profile.dev]
-panic = "abort"
+default-run = "jo12bar_os"
 
-[profile.release]
-panic = "abort"
+[workspace]
+members = ["kernel"]
 
 [dependencies]
-bootloader_api = "0.11.7"
+ovmf-prebuilt = "0.1.0-alpha.1"
+
+[build-dependencies]
+bootloader = "0.11.7"
+kernel = { path = "kernel", artifact = "bin", target = "x86_64-unknown-none" }

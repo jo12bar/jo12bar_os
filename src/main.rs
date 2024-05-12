@@ -1,29 +1,13 @@
-#![no_std]
-#![no_main]
+use std::{env, fs};
 
-use core::panic::PanicInfo;
+fn main() {
+    let current_exe = env::current_exe().unwrap();
+    let uefi_target = current_exe.with_file_name("uefi.img");
+    let bios_target = current_exe.with_file_name("bios.img");
 
-static HELLO: &[u8] = b"Hello world!";
+    fs::copy(env!("UEFI_IMAGE"), &uefi_target).expect("couldn't copy uefi image to target dir");
+    fs::copy(env!("BIOS_IMAGE"), &bios_target).expect("couldn't copy bios image to target dir");
 
-bootloader_api::entry_point!(kernel_main);
-
-/// Kernel entry point.
-fn kernel_main(_boot_info: &'static mut bootloader_api::BootInfo) -> ! {
-    let vga_buffer = 0xb8000 as *mut u8;
-
-    for (i, &byte) in HELLO.iter().enumerate() {
-        unsafe {
-            *vga_buffer.offset(i as isize * 2) = byte;
-            *vga_buffer.offset(i as isize * 2 + 1) = 0xb; // cyan coloured
-        }
-    }
-
-    #[allow(clippy::empty_loop)]
-    loop {}
-}
-
-/// Called on panic.
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+    println!("UEFI disk image at {}", uefi_target.display());
+    println!("BIOS disk image at {}", bios_target.display());
 }
