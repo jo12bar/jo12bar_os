@@ -1,0 +1,4 @@
+{
+    // Set to false to make rust analyzer ignore the missing "test" crate
+    "rust-analyzer.cargo.allTargets": false,
+}
