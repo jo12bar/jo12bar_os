@@ -3,14 +3,14 @@
 version = 3
 
 [[package]]
-name = "bootloader"
-version = "0.9.29"
+name = "bootloader_api"
+version = "0.11.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "365861702868e2a37b4247aaecc7bd8f4389baec8d025497ad8ba7ff37ee9440"
+checksum = "a35ba5100c2431e20b924c8103c2cf8adb919ed9880f625e8770c3cb9d1b06aa"
 
 [[package]]
 name = "jo12bar_os"
 version = "0.1.0"
 dependencies = [
- "bootloader",
+ "bootloader_api",
 ]

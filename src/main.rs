@@ -5,9 +5,10 @@ use core::panic::PanicInfo;
 
 static HELLO: &[u8] = b"Hello world!";
 
+bootloader_api::entry_point!(kernel_main);
+
 /// Kernel entry point.
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
+fn kernel_main(_boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     let vga_buffer = 0xb8000 as *mut u8;
 
     for (i, &byte) in HELLO.iter().enumerate() {
