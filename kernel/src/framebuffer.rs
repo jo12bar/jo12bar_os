@@ -292,8 +292,12 @@ impl log::Log for LockedDisplay<'_> {
     }
 
     fn log(&self, record: &log::Record) {
-        let mut display = self.inner.lock();
-        writeln!(display, "[{:<5}] {}", record.level(), record.args()).unwrap();
+        use x86_64::instructions::interrupts;
+
+        interrupts::without_interrupts(|| {
+            let mut display = self.inner.lock();
+            writeln!(display, "[{:<5}] {}", record.level(), record.args()).unwrap();
+        });
     }
 
     fn flush(&self) {}

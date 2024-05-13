@@ -18,5 +18,7 @@ conquer-once = { version = "0.4.0", default-features = false }
 spinning_top = "0.3.0"
 x86_64 = "0.15.1"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+pic8259 = "0.11.0"
+pc-keyboard = "0.7.0"
 # embedded-text = { version = "0.7.1", features = ["ansi"] }
 # ringbuffer = { version = "0.15.0", default-features = false }

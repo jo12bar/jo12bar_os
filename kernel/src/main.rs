@@ -24,25 +24,20 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     init(boot_info);
     init_logger();
 
-    fn stack_overflow() {
-        stack_overflow(); // for each recursion, the return address is pushed
-    }
-
-    stack_overflow();
-
     log::trace!("Testing logging");
     log::debug!("Testing logging");
     log::info!("Testing logging");
     log::warn!("Testing logging");
     log::error!("Testing logging");
 
-    #[allow(clippy::empty_loop)]
-    loop {}
+    hlt_loop();
 }
 
 fn init(boot_info: &'static mut bootloader_api::BootInfo) {
     gdt::init();
     interrupts::init_idt();
+    unsafe { interrupts::PICS.lock().initialize() };
+    x86_64::instructions::interrupts::enable();
 
     let framebuffer = boot_info.framebuffer.as_mut().unwrap();
 
@@ -66,5 +61,12 @@ fn panic(info: &PanicInfo) -> ! {
         }
     }
     log::error!("{}", info);
-    loop {}
+    hlt_loop();
+}
+
+/// Loop endlessly, executing the x86 `hlt` instruction.
+pub fn hlt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
 }
