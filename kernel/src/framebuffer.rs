@@ -1,10 +1,19 @@
+use core::fmt::{self, Write};
+use core::ops::Deref;
+
 use bootloader_api::info::{FrameBuffer, PixelFormat};
 use embedded_graphics::{
     draw_target::DrawTarget,
-    geometry::{OriginDimensions, Size},
+    geometry::{OriginDimensions, Point, Size},
+    mono_font::{ascii::FONT_8X13, MonoTextStyle},
     pixelcolor::{Rgb888, RgbColor},
-    Pixel,
+    primitives::Rectangle,
+    text::{
+        renderer::TextRenderer, Alignment, Baseline, LineHeight, Text, TextStyle, TextStyleBuilder,
+    },
+    Drawable, Pixel,
 };
+use spinning_top::Spinlock;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Position {
@@ -94,11 +103,34 @@ pub fn set_pixel_in(framebuffer: &mut FrameBuffer, position: Position, color: Co
 /// crate to draw on them.
 pub struct Display<'f> {
     framebuffer: &'f mut FrameBuffer,
+    log_character_style: MonoTextStyle<'static, Rgb888>,
+    log_text_style: TextStyle,
+    log_bounds: Rectangle,
+    log_pos: Point,
 }
 
 impl<'f> Display<'f> {
     pub fn new(framebuffer: &'f mut FrameBuffer) -> Display {
-        Display { framebuffer }
+        let (fb_width, fb_height) = {
+            let info = framebuffer.info();
+            (info.width, info.height)
+        };
+
+        let log_character_style = MonoTextStyle::new(&FONT_8X13, Rgb888::WHITE);
+        let log_text_style = TextStyleBuilder::new()
+            .alignment(Alignment::Left)
+            .baseline(Baseline::Top)
+            .line_height(LineHeight::Percent(100))
+            .build();
+        let log_bounds = Rectangle::new(Point::zero(), Size::new(fb_width as _, fb_height as _));
+
+        Display {
+            framebuffer,
+            log_character_style,
+            log_text_style,
+            log_bounds,
+            log_pos: Point::new(0, 0),
+        }
     }
 
     fn draw_pixel(&mut self, Pixel(coordinates, color): Pixel<Rgb888>) {
@@ -117,6 +149,75 @@ impl<'f> Display<'f> {
             let color = Color::rgb(color.r(), color.g(), color.b());
             set_pixel_in(self.framebuffer, Position::new(x, y), color)
         }
+    }
+
+    fn log_newline(&mut self) {
+        let abs_line_height = self
+            .log_text_style
+            .line_height
+            .to_absolute(self.log_character_style.line_height());
+
+        self.log_pos.y += abs_line_height as i32;
+        self.log_carriage_return();
+    }
+
+    fn log_carriage_return(&mut self) {
+        self.log_pos.x = 0;
+    }
+
+    fn log_width(&mut self) -> u32 {
+        self.log_bounds.size.width
+    }
+
+    fn log_height(&mut self) -> u32 {
+        self.log_bounds.size.height
+    }
+
+    fn write_log_char(&mut self, c: char) {
+        let abs_line_height = self
+            .log_text_style
+            .line_height
+            .to_absolute(self.log_character_style.line_height());
+
+        let char_width = self.log_character_style.font.character_size.width;
+
+        match c {
+            '\n' => self.log_newline(),
+            '\r' => self.log_carriage_return(),
+            c => {
+                let new_xpos = self.log_pos.x + char_width as i32;
+                if new_xpos >= self.log_width() as i32 {
+                    self.log_newline()
+                }
+
+                let new_ypos = self.log_pos.y + abs_line_height as i32;
+                if new_ypos >= self.log_height() as i32 {
+                    self.clear(Rgb888::BLACK).unwrap();
+                    self.log_pos = Point::zero();
+                }
+
+                self.write_log_rendered_char(c);
+            }
+        }
+    }
+
+    fn write_log_rendered_char(&mut self, c: char) {
+        let mut c_buf: [u8; 4] = [0; 4];
+        let text: &str = c.encode_utf8(&mut c_buf);
+
+        Text::with_text_style(
+            text,
+            self.log_pos,
+            self.log_character_style,
+            self.log_text_style,
+        )
+        .draw(self)
+        .unwrap();
+
+        let char_width = self.log_character_style.font.character_size.width;
+        let char_horiz_gap = self.log_character_style.font.character_spacing;
+
+        self.log_pos.x += (char_width + char_horiz_gap) as i32;
     }
 }
 
@@ -152,4 +253,48 @@ impl<'f> OriginDimensions for Display<'f> {
 
         Size::new(info.width as u32, info.height as u32)
     }
+}
+
+impl<'f> Write for Display<'f> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for c in s.chars() {
+            self.write_log_char(c);
+        }
+        Ok(())
+    }
+}
+
+/// A [`Display`] locked behind a [`Spinlock`].
+#[repr(transparent)]
+pub struct LockedDisplay<'f> {
+    inner: Spinlock<Display<'f>>,
+}
+
+impl<'f> LockedDisplay<'f> {
+    pub fn new(display: Display<'f>) -> LockedDisplay<'f> {
+        LockedDisplay {
+            inner: Spinlock::new(display),
+        }
+    }
+}
+
+impl<'f> Deref for LockedDisplay<'f> {
+    type Target = Spinlock<Display<'f>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl log::Log for LockedDisplay<'_> {
+    fn enabled(&self, _metadata: &log::Metadata) -> bool {
+        true
+    }
+
+    fn log(&self, record: &log::Record) {
+        let mut display = self.inner.lock();
+        writeln!(display, "[{:<5}] {}", record.level(), record.args()).unwrap();
+    }
+
+    fn flush(&self) {}
 }
