@@ -8,6 +8,7 @@ use conquer_once::spin::OnceCell;
 use embedded_graphics::{pixelcolor::Rgb888, prelude::*};
 
 mod framebuffer;
+mod gdt;
 mod interrupts;
 
 bootloader_api::entry_point!(kernel_main);
@@ -23,8 +24,11 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     init(boot_info);
     init_logger();
 
-    // invoke a breakpoint exception
-    x86_64::instructions::interrupts::int3();
+    fn stack_overflow() {
+        stack_overflow(); // for each recursion, the return address is pushed
+    }
+
+    stack_overflow();
 
     log::trace!("Testing logging");
     log::debug!("Testing logging");
@@ -37,6 +41,7 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
 }
 
 fn init(boot_info: &'static mut bootloader_api::BootInfo) {
+    gdt::init();
     interrupts::init_idt();
 
     let framebuffer = boot_info.framebuffer.as_mut().unwrap();
