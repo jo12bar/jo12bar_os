@@ -1,13 +1,14 @@
 #![no_std]
 #![no_main]
+#![feature(abi_x86_interrupt)]
 
-use core::fmt::Write;
 use core::panic::PanicInfo;
 
 use conquer_once::spin::OnceCell;
 use embedded_graphics::{pixelcolor::Rgb888, prelude::*};
 
 mod framebuffer;
+mod interrupts;
 
 bootloader_api::entry_point!(kernel_main);
 
@@ -19,24 +20,11 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
         panic!("could not access framebuffer");
     }
 
-    let framebuffer = boot_info.framebuffer.as_mut().unwrap();
-
-    let display = DISPLAY.get_or_init(|| framebuffer::LockedDisplay::new(framebuffer.into()));
-
+    init(boot_info);
     init_logger();
 
-    {
-        let mut d = display.lock();
-        d.clear(Rgb888::BLUE).unwrap();
-
-        for i in 0..=255 {
-            write!(d, "{i:4}: ").unwrap();
-            for j in 0..i {
-                write!(d, "{}", j % 10).unwrap();
-            }
-            writeln!(d).unwrap();
-        }
-    }
+    // invoke a breakpoint exception
+    x86_64::instructions::interrupts::int3();
 
     log::trace!("Testing logging");
     log::debug!("Testing logging");
@@ -46,6 +34,15 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
 
     #[allow(clippy::empty_loop)]
     loop {}
+}
+
+fn init(boot_info: &'static mut bootloader_api::BootInfo) {
+    interrupts::init_idt();
+
+    let framebuffer = boot_info.framebuffer.as_mut().unwrap();
+
+    let display = DISPLAY.get_or_init(|| framebuffer::LockedDisplay::new(framebuffer.into()));
+    display.lock().clear(Rgb888::BLACK).unwrap();
 }
 
 pub(crate) fn init_logger() {
