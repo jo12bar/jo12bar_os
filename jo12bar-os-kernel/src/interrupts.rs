@@ -72,7 +72,13 @@ extern "x86-interrupt" fn double_fault_handler(
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    log::trace!("received timer interrupt");
+    use core::fmt::Write;
+
+    if let Ok(d) = crate::DISPLAY.try_get() {
+        if let Some(mut disp) = d.try_lock() {
+            write!(disp, ".").unwrap();
+        }
+    }
 
     unsafe {
         PICS.lock()
