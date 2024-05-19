@@ -8,14 +8,9 @@
 
 use core::panic::PanicInfo;
 
-use conquer_once::spin::OnceCell;
-use embedded_graphics::{pixelcolor::Rgb888, prelude::*};
-
-use jo12bar_os_kernel::{framebuffer, gdt, interrupts};
+use jo12bar_os_kernel::{init, init_logger, DISPLAY};
 
 bootloader_api::entry_point!(kernel_main);
-
-pub(crate) static DISPLAY: OnceCell<framebuffer::LockedDisplay> = OnceCell::uninit();
 
 /// Kernel entry point.
 fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
@@ -33,25 +28,6 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     log::error!("Testing logging");
 
     hlt_loop();
-}
-
-fn init(boot_info: &'static mut bootloader_api::BootInfo) {
-    gdt::init();
-    interrupts::init_idt();
-    unsafe { interrupts::PICS.lock().initialize() };
-    x86_64::instructions::interrupts::enable();
-
-    let framebuffer = boot_info.framebuffer.as_mut().unwrap();
-
-    let display = DISPLAY.get_or_init(|| framebuffer::LockedDisplay::new(framebuffer.into()));
-    display.lock().clear(Rgb888::BLACK).unwrap();
-}
-
-pub(crate) fn init_logger() {
-    let display = DISPLAY.get().unwrap();
-    log::set_logger(display).expect("Logger has already been set");
-    log::set_max_level(log::LevelFilter::Trace);
-    log::info!("Hello, kernel mode!");
 }
 
 /// Called on panic.
