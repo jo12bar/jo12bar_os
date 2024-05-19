@@ -1,15 +1,17 @@
 [package]
-name = "jo12bar_os"
+name = "jo12bar-os-runner"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
-default-run = "jo12bar_os"
+default-run = "jo12bar-os-runner"
 
 [workspace]
 members = ["kernel"]
 
 [dependencies]
+clap = { version = "4.5.4", features = ["derive"] }
+color-eyre = "0.6.3"
 ovmf-prebuilt = "0.1.0-alpha.1"
 
 [build-dependencies]
