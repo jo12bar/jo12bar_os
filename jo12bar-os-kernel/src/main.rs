@@ -11,9 +11,7 @@ use core::panic::PanicInfo;
 use conquer_once::spin::OnceCell;
 use embedded_graphics::{pixelcolor::Rgb888, prelude::*};
 
-mod framebuffer;
-mod gdt;
-mod interrupts;
+use jo12bar_os_kernel::{framebuffer, gdt, interrupts};
 
 bootloader_api::entry_point!(kernel_main);
 

@@ -1,3 +1,9 @@
+//! Utilities for displaying things on the framebuffer, including drawing and logging.
+//!
+//! [`Display`] allows for drawing to the framebuffer using the [`embedded_graphics`]
+//! crate. [`LockedDisplay`] wraps the [`Display`] in a [`Spinlock`], and implements
+//! [`log::Log`] so it can be used as a logging target.
+
 use core::fmt::{self, Write};
 use core::ops::Deref;
 
@@ -15,19 +21,26 @@ use embedded_graphics::{
 };
 use spinning_top::Spinlock;
 
+/// A 2D position in the [`FrameBuffer`].
+///
+/// (0, 0) is in the top-left.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Position {
+    /// Horizontal position. Increases going right, decreases going left.
     pub x: usize,
+    /// Vertical position. Increases going down, decreases going up.
     pub y: usize,
 }
 
 impl Position {
+    /// Instantiate a new [`Position`].
     pub const fn new(x: usize, y: usize) -> Self {
         Self { x, y }
     }
 }
 
 /// An 8-bit RGB color.
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Color {
     pub red: u8,
@@ -36,6 +49,7 @@ pub struct Color {
 }
 
 impl Color {
+    /// Instantiate a new 8-bit RGB color.
     pub const fn rgb(red: u8, green: u8, blue: u8) -> Self {
         Self { red, green, blue }
     }
@@ -110,6 +124,8 @@ pub struct Display<'f> {
 }
 
 impl<'f> Display<'f> {
+    /// Wrap a mutable reference to a [`FrameBuffer`], allowing for drawing with
+    /// [`embedded_graphics`].
     pub fn new(framebuffer: &'f mut FrameBuffer) -> Display {
         let (fb_width, fb_height) = {
             let info = framebuffer.info();
@@ -271,6 +287,8 @@ pub struct LockedDisplay<'f> {
 }
 
 impl<'f> LockedDisplay<'f> {
+    /// Lock a [`Display`] behind a [`Spinlock`], allowing for synchronized drawing
+    /// to a [`FrameBuffer`].
     pub fn new(display: Display<'f>) -> LockedDisplay<'f> {
         LockedDisplay {
             inner: Spinlock::new(display),
@@ -283,6 +301,12 @@ impl<'f> Deref for LockedDisplay<'f> {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
+    }
+}
+
+impl<'f> From<&'f mut FrameBuffer> for LockedDisplay<'f> {
+    fn from(framebuffer: &'f mut FrameBuffer) -> Self {
+        Self::new(Display::new(framebuffer))
     }
 }
 

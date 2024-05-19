@@ -1,3 +1,5 @@
+//! Interrupt setup and handlers.
+
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spinning_top::Spinlock;
@@ -14,6 +16,8 @@ pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 pub static PICS: Spinlock<ChainedPics> =
     Spinlock::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
 
+/// Interrupt indexes in the Interrupt Descriptor Table, past the first 32 pre-defined CPU indices.
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum InterruptIndex {
