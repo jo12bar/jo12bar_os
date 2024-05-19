@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 default-run = "jo12bar-os-runner"
 
 [workspace]
-members = ["kernel"]
+members = ["jo12bar-os-kernel"]
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
@@ -16,4 +16,4 @@ ovmf-prebuilt = "0.1.0-alpha.1"
 
 [build-dependencies]
 bootloader = "0.11.7"
-kernel = { path = "kernel", artifact = "bin", target = "x86_64-unknown-none" }
+jo12bar-os-kernel = { path = "jo12bar-os-kernel", artifact = "bin", target = "x86_64-unknown-none" }

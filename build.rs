@@ -3,7 +3,7 @@ use std::{env, path::PathBuf};
 
 fn main() {
     // set by cargo for the kernel artifact dependency
-    let kernel_path = env::var("CARGO_BIN_FILE_KERNEL").unwrap();
+    let kernel_path = env::var("CARGO_BIN_FILE_JO12BAR_OS_KERNEL").unwrap();
     let disk_builder = DiskImageBuilder::new(PathBuf::from(kernel_path));
 
     // specify output paths

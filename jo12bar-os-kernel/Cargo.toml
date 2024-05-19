@@ -1,11 +1,11 @@
 [package]
-name = "kernel"
+name = "jo12bar-os-kernel"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [[bin]]
-name = "kernel"
+name = "jo12bar-os-kernel"
 test = false
 bench = false
 

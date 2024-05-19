@@ -792,18 +792,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
-name = "jo12bar-os-runner"
-version = "0.1.0"
-dependencies = [
- "bootloader",
- "clap",
- "color-eyre",
- "kernel",
- "ovmf-prebuilt",
-]
-
-[[package]]
-name = "kernel"
+name = "jo12bar-os-kernel"
 version = "0.1.0"
 dependencies = [
  "bootloader_api",
@@ -815,6 +804,17 @@ dependencies = [
  "pic8259",
  "spinning_top",
  "x86_64",
+]
+
+[[package]]
+name = "jo12bar-os-runner"
+version = "0.1.0"
+dependencies = [
+ "bootloader",
+ "clap",
+ "color-eyre",
+ "jo12bar-os-kernel",
+ "ovmf-prebuilt",
 ]
 
 [[package]]
