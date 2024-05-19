@@ -800,9 +800,11 @@ dependencies = [
  "embedded-graphics",
  "lazy_static",
  "log",
+ "mem-util",
  "pc-keyboard",
  "pic8259",
  "spinning_top",
+ "static_assertions",
  "x86_64",
 ]
 
@@ -878,6 +880,10 @@ dependencies = [
  "serde-big-array",
  "thiserror",
 ]
+
+[[package]]
+name = "mem-util"
+version = "0.1.0"
 
 [[package]]
 name = "memchr"
@@ -1203,6 +1209,12 @@ checksum = "d96d2d1d716fb500937168cc09353ffdc7a012be8475ac7308e1bdf0e3923300"
 dependencies = [
  "lock_api",
 ]
+
+[[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strsim"

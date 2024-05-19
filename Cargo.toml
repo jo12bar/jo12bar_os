@@ -1,13 +1,25 @@
 [package]
 name = "jo12bar-os-runner"
-version = "0.1.0"
-edition = "2021"
-license = "MIT OR Apache-2.0"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 default-run = "jo12bar-os-runner"
 
 [workspace]
-members = ["jo12bar-os-kernel"]
+members = ["jo12bar-os-kernel", "mem-util"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+bootloader = "0.11.7"
+bootloader_api = "0.11.7"
+x86_64 = "0.15.1"
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+static_assertions = "1.1.0"
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
@@ -15,5 +27,5 @@ color-eyre = "0.6.3"
 ovmf-prebuilt = "0.1.0-alpha.1"
 
 [build-dependencies]
-bootloader = "0.11.7"
+bootloader.workspace = true
 jo12bar-os-kernel = { path = "jo12bar-os-kernel", artifact = "bin", target = "x86_64-unknown-none" }

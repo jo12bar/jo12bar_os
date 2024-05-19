@@ -8,9 +8,17 @@
 
 use core::panic::PanicInfo;
 
-use jo12bar_os_kernel::{init, init_logger, DISPLAY};
+use jo12bar_os_kernel::{
+    bootloader_config_common, hlt_loop, init, init_logger, memory::BootInfoFrameAllocator, DISPLAY,
+};
 
-bootloader_api::entry_point!(kernel_main);
+/// Configuration for the bootloader.
+const BOOTLOADER_CONFIG: bootloader_api::BootloaderConfig = {
+    let config = bootloader_api::BootloaderConfig::new_default();
+    bootloader_config_common(config)
+};
+
+bootloader_api::entry_point!(kernel_main, config = &BOOTLOADER_CONFIG);
 
 /// Kernel entry point.
 fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
@@ -18,14 +26,12 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
         panic!("could not access framebuffer");
     }
 
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
+
     init(boot_info);
     init_logger();
 
-    log::trace!("Testing logging");
-    log::debug!("Testing logging");
-    log::info!("Testing logging");
-    log::warn!("Testing logging");
-    log::error!("Testing logging");
+    log::info!("Kernel initialized");
 
     hlt_loop();
 }
@@ -40,11 +46,4 @@ fn panic(info: &PanicInfo) -> ! {
     }
     log::error!("{}", info);
     hlt_loop();
-}
-
-/// Loop endlessly, executing the x86 `hlt` instruction.
-pub fn hlt_loop() -> ! {
-    loop {
-        x86_64::instructions::hlt();
-    }
 }

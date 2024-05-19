@@ -1,8 +1,8 @@
 [package]
 name = "jo12bar-os-kernel"
-version = "0.1.0"
-edition = "2021"
-license = "MIT OR Apache-2.0"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [[bin]]
 name = "jo12bar-os-kernel"
@@ -10,15 +10,18 @@ test = false
 bench = false
 
 [dependencies]
-bootloader_api = "0.11.7"
+mem-util = { path = "../mem-util" }
+
+bootloader_api.workspace = true
 embedded-graphics = "0.8.1"
 # bootloader-x86_64-common = "0.11.7"
 log = { version = "0.4.21", default-features = false }
 conquer-once = { version = "0.4.0", default-features = false }
 spinning_top = "0.3.0"
-x86_64 = "0.15.1"
-lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+x86_64.workspace = true
+lazy_static.workspace = true
 pic8259 = "0.11.0"
 pc-keyboard = "0.7.0"
+static_assertions.workspace = true
 # embedded-text = { version = "0.7.1", features = ["ansi"] }
 # ringbuffer = { version = "0.15.0", default-features = false }
