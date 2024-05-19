@@ -5,12 +5,15 @@
 #![warn(missing_docs, rustdoc::missing_crate_level_docs)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+extern crate alloc;
+
 use conquer_once::spin::OnceCell;
 use embedded_graphics::{pixelcolor::Rgb888, prelude::*};
 use framebuffer::Display;
 use mem_util::KiB;
 use x86_64::structures::paging::{PageSize, Size4KiB};
 
+pub mod allocator;
 pub mod framebuffer;
 pub mod gdt;
 pub mod interrupts;
@@ -34,6 +37,7 @@ pub fn init(boot_info: &mut bootloader_api::BootInfo) {
 
     let display = DISPLAY
         .get_or_init(|| framebuffer::LockedDisplay::new(Display::new(framebuffer_inner, fb_info)));
+
     display.lock().clear(Rgb888::BLACK).unwrap();
 }
 
