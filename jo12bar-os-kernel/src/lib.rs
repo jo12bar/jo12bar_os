@@ -7,6 +7,7 @@
 
 use conquer_once::spin::OnceCell;
 use embedded_graphics::{pixelcolor::Rgb888, prelude::*};
+use framebuffer::Display;
 use mem_util::KiB;
 use x86_64::structures::paging::{PageSize, Size4KiB};
 
@@ -21,15 +22,18 @@ pub mod memory;
 pub static DISPLAY: OnceCell<framebuffer::LockedDisplay> = OnceCell::uninit();
 
 /// Initialize the kernel.
-pub fn init(boot_info: &'static mut bootloader_api::BootInfo) {
+pub fn init(boot_info: &mut bootloader_api::BootInfo) {
     gdt::init();
     interrupts::init_idt();
     unsafe { interrupts::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();
 
-    let framebuffer = boot_info.framebuffer.as_mut().unwrap();
+    let framebuffer = boot_info.framebuffer.take().unwrap();
+    let fb_info = framebuffer.info();
+    let framebuffer_inner = framebuffer.into_buffer();
 
-    let display = DISPLAY.get_or_init(|| framebuffer::LockedDisplay::new(framebuffer.into()));
+    let display = DISPLAY
+        .get_or_init(|| framebuffer::LockedDisplay::new(Display::new(framebuffer_inner, fb_info)));
     display.lock().clear(Rgb888::BLACK).unwrap();
 }
 

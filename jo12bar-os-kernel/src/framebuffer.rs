@@ -7,7 +7,7 @@
 use core::fmt::{self, Write};
 use core::ops::Deref;
 
-use bootloader_api::info::{FrameBuffer, PixelFormat};
+use bootloader_api::info::{FrameBufferInfo, PixelFormat};
 use embedded_graphics::{
     draw_target::DrawTarget,
     geometry::{OriginDimensions, Point, Size},
@@ -75,19 +75,22 @@ impl Color {
 /// > ```
 ///
 /// Custom greyscale transforms are not yet supported.
-pub fn set_pixel_in(framebuffer: &mut FrameBuffer, position: Position, color: Color) {
-    let info = framebuffer.info();
-
+pub fn set_pixel_in(
+    framebuffer: &mut [u8],
+    fb_info: &FrameBufferInfo,
+    position: Position,
+    color: Color,
+) {
     // calculate offset to first byte of pixel
     let byte_offset = {
-        let line_offset = position.y * info.stride;
+        let line_offset = position.y * fb_info.stride;
         let pixel_offset = line_offset + position.x;
-        pixel_offset * info.bytes_per_pixel // convert to byte offset
+        pixel_offset * fb_info.bytes_per_pixel // convert to byte offset
     };
 
     // set pixel based on color format
-    let pixel_buffer = &mut framebuffer.buffer_mut()[byte_offset..];
-    match info.pixel_format {
+    let pixel_buffer = &mut framebuffer[byte_offset..];
+    match fb_info.pixel_format {
         PixelFormat::Rgb => {
             pixel_buffer[0] = color.red;
             pixel_buffer[1] = color.green;
@@ -116,7 +119,8 @@ pub fn set_pixel_in(framebuffer: &mut FrameBuffer, position: Position, color: Co
 /// A wrapper struct for [`FrameBuffer`]s to allow using the [`embedded_graphics`]
 /// crate to draw on them.
 pub struct Display<'f> {
-    framebuffer: &'f mut FrameBuffer,
+    framebuffer: &'f mut [u8],
+    framebuffer_info: FrameBufferInfo,
     log_character_style: MonoTextStyle<'static, Rgb888>,
     log_text_style: TextStyle,
     log_bounds: Rectangle,
@@ -126,11 +130,8 @@ pub struct Display<'f> {
 impl<'f> Display<'f> {
     /// Wrap a mutable reference to a [`FrameBuffer`], allowing for drawing with
     /// [`embedded_graphics`].
-    pub fn new(framebuffer: &'f mut FrameBuffer) -> Display {
-        let (fb_width, fb_height) = {
-            let info = framebuffer.info();
-            (info.width, info.height)
-        };
+    pub fn new(framebuffer: &'f mut [u8], framebuffer_info: FrameBufferInfo) -> Display {
+        let (fb_width, fb_height) = (framebuffer_info.width, framebuffer_info.height);
 
         let log_character_style = MonoTextStyle::new(&FONT_8X13, Rgb888::WHITE);
         let log_text_style = TextStyleBuilder::new()
@@ -142,6 +143,7 @@ impl<'f> Display<'f> {
 
         Display {
             framebuffer,
+            framebuffer_info,
             log_character_style,
             log_text_style,
             log_bounds,
@@ -152,7 +154,7 @@ impl<'f> Display<'f> {
     fn draw_pixel(&mut self, Pixel(coordinates, color): Pixel<Rgb888>) {
         // ignore any out-of-bounds pixels
         let (width, height) = {
-            let info = self.framebuffer.info();
+            let info = self.framebuffer_info;
             (info.width, info.height)
         };
 
@@ -163,7 +165,12 @@ impl<'f> Display<'f> {
 
         if (0..width).contains(&x) && (0..height).contains(&y) {
             let color = Color::rgb(color.r(), color.g(), color.b());
-            set_pixel_in(self.framebuffer, Position::new(x, y), color)
+            set_pixel_in(
+                self.framebuffer,
+                &self.framebuffer_info,
+                Position::new(x, y),
+                color,
+            )
         }
     }
 
@@ -237,12 +244,6 @@ impl<'f> Display<'f> {
     }
 }
 
-impl<'f> From<&'f mut FrameBuffer> for Display<'f> {
-    fn from(framebuffer: &'f mut FrameBuffer) -> Self {
-        Self::new(framebuffer)
-    }
-}
-
 impl<'f> DrawTarget for Display<'f> {
     type Color = Rgb888;
 
@@ -265,7 +266,7 @@ impl<'f> DrawTarget for Display<'f> {
 
 impl<'f> OriginDimensions for Display<'f> {
     fn size(&self) -> Size {
-        let info = self.framebuffer.info();
+        let info = self.framebuffer_info;
 
         Size::new(info.width as u32, info.height as u32)
     }
@@ -301,12 +302,6 @@ impl<'f> Deref for LockedDisplay<'f> {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
-    }
-}
-
-impl<'f> From<&'f mut FrameBuffer> for LockedDisplay<'f> {
-    fn from(framebuffer: &'f mut FrameBuffer) -> Self {
-        Self::new(Display::new(framebuffer))
     }
 }
 

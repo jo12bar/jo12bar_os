@@ -3,10 +3,7 @@
 use bootloader_api::info::{MemoryRegionKind, MemoryRegions};
 use mem_util::KiB;
 use x86_64::{
-    structures::paging::{
-        frame, FrameAllocator, Mapper, OffsetPageTable, Page, PageTable, PhysFrame, Size4KiB,
-        Translate,
-    },
+    structures::paging::{FrameAllocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB},
     PhysAddr, VirtAddr,
 };
 
@@ -69,7 +66,7 @@ pub struct BootInfoFrameAllocator {
     next: usize,
 }
 
-impl<'a> BootInfoFrameAllocator {
+impl BootInfoFrameAllocator {
     /// Create a [`FrameAllocator`] from the passed memory map.
     ///
     /// # Safety

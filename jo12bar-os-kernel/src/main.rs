@@ -26,10 +26,10 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
         panic!("could not access framebuffer");
     }
 
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
-
     init(boot_info);
     init_logger();
+
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
 
     log::info!("Kernel initialized");
 
