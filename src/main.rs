@@ -35,6 +35,10 @@ fn run_qemu_uefi() -> color_eyre::Result<()> {
     qemu.arg("-drive");
     qemu.arg(format!("format=raw,file={}", env!("UEFI_IMAGE")));
     qemu.arg("-bios").arg(ovmf_prebuilt::ovmf_pure_efi());
+    qemu.arg("-device");
+    qemu.arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
+    qemu.arg("-serial");
+    qemu.arg("stdio");
     let exit_status = qemu.status()?;
     process::exit(exit_status.code().unwrap_or(-1));
 }
@@ -43,6 +47,10 @@ fn run_qemu_bios() -> color_eyre::Result<()> {
     let mut qemu = Command::new("qemu-system-x86_64");
     qemu.arg("-drive");
     qemu.arg(format!("format=raw,file={}", env!("BIOS_IMAGE")));
+    qemu.arg("-device");
+    qemu.arg("isa-debug-exit,iobase=0xf4,iosize=0x04");
+    qemu.arg("-serial");
+    qemu.arg("stdio");
     let exit_status = qemu.status()?;
     process::exit(exit_status.code().unwrap_or(-1));
 }

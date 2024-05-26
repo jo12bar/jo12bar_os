@@ -10,13 +10,8 @@ extern crate alloc;
 
 use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use core::panic::PanicInfo;
-use x86_64::VirtAddr;
 
-use jo12bar_os_kernel::{
-    allocator, bootloader_config_common, hlt_loop, init, init_logger,
-    memory::{self, BootInfoFrameAllocator},
-    DISPLAY,
-};
+use jo12bar_os_kernel::{bootloader_config_common, dbg, graphics, hlt_loop, init, logger::LOGGER};
 
 /// Configuration for the bootloader.
 const BOOTLOADER_CONFIG: bootloader_api::BootloaderConfig = {
@@ -33,13 +28,6 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     }
 
     init(boot_info);
-    init_logger();
-
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().unwrap());
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
-
-    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 
     // Allocate a number on the heap
     let heap_value = Box::new(41);
@@ -62,17 +50,27 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
 
     log::info!("Kernel initialized");
 
+    dbg!();
+    dbg!(&graphics::framebuffer::HARDWARE_FRAMEBUFFER);
+
+    log::trace!("Test trace log");
+    log::debug!("Test debug log");
+    log::info!("Test info log");
+    log::warn!("Test warn log");
+    log::error!("Test error log");
+
     hlt_loop();
 }
 
 /// Called on panic.
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    if let Some(d) = DISPLAY.get() {
-        unsafe {
-            d.force_unlock();
+    unsafe {
+        if let Some(l) = LOGGER.as_ref() {
+            l.force_unlock();
         }
     }
+    // unsafe { jo12bar_os_kernel::exit_qemu(jo12bar_os_kernel::QemuExitCode::Failure) };
     log::error!("{}", info);
     hlt_loop();
 }

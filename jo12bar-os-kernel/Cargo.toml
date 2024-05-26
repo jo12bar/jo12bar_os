@@ -9,10 +9,16 @@ name = "jo12bar-os-kernel"
 test = false
 bench = false
 
+[features]
+no-colored-log = []
+
+default = []
+
 [dependencies]
 mem-util = { path = "../mem-util" }
 
 bootloader_api.workspace = true
+derive_builder.workspace = true
 embedded-graphics = "0.8.1"
 # bootloader-x86_64-common = "0.11.7"
 log = { version = "0.4.21", default-features = false }
@@ -24,5 +30,7 @@ pic8259 = "0.11.0"
 pc-keyboard = "0.7.0"
 static_assertions.workspace = true
 linked_list_allocator = "0.10.5"
+thiserror = { version = "1.0", package = "thiserror-core", default-features = false }
 # embedded-text = { version = "0.7.1", features = ["ansi"] }
 # ringbuffer = { version = "0.15.0", default-features = false }
+uart_16550.workspace = true

@@ -17,9 +17,11 @@ license = "MIT OR Apache-2.0"
 [workspace.dependencies]
 bootloader = "0.11.7"
 bootloader_api = "0.11.7"
+derive_builder = { version = "0.20.0", git = "https://github.com/Wasabi375/rust-derive-builder", branch = "owned_custom_default", default-features = false }
 x86_64 = "0.15.1"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 static_assertions = "1.1.0"
+uart_16550 = "0.3.0"
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }

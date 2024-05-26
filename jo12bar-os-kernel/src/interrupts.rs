@@ -5,7 +5,7 @@ use pic8259::ChainedPics;
 use spinning_top::Spinlock;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
-use crate::{gdt, hlt_loop};
+use crate::{gdt, hlt_loop, serial_print};
 
 /// Interrupt vector number offset for the primary Programmable Interrupt Controller.
 pub const PIC_1_OFFSET: u8 = 32;
@@ -74,11 +74,17 @@ extern "x86-interrupt" fn double_fault_handler(
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     use core::fmt::Write;
 
-    if let Ok(d) = crate::DISPLAY.try_get() {
-        if let Some(mut disp) = d.try_lock() {
-            write!(disp, ".").unwrap();
+    unsafe {
+        if let Some(Some(l)) = core::ptr::addr_of!(crate::logger::LOGGER).as_ref() {
+            if let Some(mut canvas_writer_lock) = l.try_lock() {
+                if let Some(canvas_writer) = canvas_writer_lock.as_mut() {
+                    write!(canvas_writer, ".").unwrap();
+                }
+            }
         }
     }
+
+    serial_print!(".");
 
     unsafe {
         PICS.lock()
