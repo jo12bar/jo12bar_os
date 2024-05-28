@@ -4,6 +4,8 @@
 #![warn(missing_docs, rustdoc::missing_crate_level_docs)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+pub mod types;
+
 /// Converts its argument from kibibytes to bytes.
 #[macro_export]
 macro_rules! KiB {

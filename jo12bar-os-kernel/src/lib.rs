@@ -7,10 +7,13 @@
 
 extern crate alloc;
 
-use core::ptr;
+use core::{
+    ptr,
+    sync::atomic::{self, AtomicU8},
+};
 
 use bootloader_api::BootInfo;
-use mem_util::KiB;
+use mem_util::{types::CoreId, KiB};
 use memory::BootInfoFrameAllocator;
 use x86_64::{
     structures::paging::{PageSize, Size4KiB},
@@ -24,6 +27,16 @@ pub mod interrupts;
 pub mod logger;
 pub mod memory;
 pub mod serial;
+
+/// A counter used to sign an ID for each core.
+///
+/// Each core called [AtomicU8::fetch_add] to get its ID and automatically
+/// increment it for the next core ensuring IDs are unique.
+///
+/// As a side-effect, this is also the number of cores that have been started.
+///
+/// TODO: Implement actually booting more than one core :)
+static CORE_ID_COUNTER: AtomicU8 = AtomicU8::new(0);
 
 /// Contains the [BootInfo] provided by the Bootloader
 ///
@@ -51,11 +64,18 @@ pub fn init(boot_info: &'static mut bootloader_api::BootInfo) {
         BOOT_INFO = boot_info;
     }
 
+    let core_id: CoreId = CORE_ID_COUNTER
+        .fetch_add(1, atomic::Ordering::AcqRel)
+        .into();
+
+    serial_print!("booting core {core_id}... ");
+
     gdt::init();
     interrupts::init_idt();
     unsafe { interrupts::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();
 
+    serial_println!("done");
     serial_print!("initializing logger... ");
 
     // Safety: Serial should be initialized by now
