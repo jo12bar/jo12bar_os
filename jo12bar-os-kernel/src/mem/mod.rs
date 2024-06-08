@@ -1,5 +1,7 @@
 //! Memory setup, mapping, and allocation.
 
+pub mod allocator;
+
 use bootloader_api::info::{MemoryRegionKind, MemoryRegions};
 use mem_util::KiB;
 use x86_64::{

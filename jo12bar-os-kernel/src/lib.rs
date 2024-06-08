@@ -11,21 +11,20 @@ use core::ptr;
 
 use bootloader_api::BootInfo;
 use core_locals::core_boot;
+use mem::BootInfoFrameAllocator;
 use mem_util::KiB;
-use memory::BootInfoFrameAllocator;
 use x86_64::{
     structures::paging::{PageSize, Size4KiB},
     VirtAddr,
 };
 
-pub mod allocator;
 pub mod core_locals;
 pub mod cpu;
 pub mod gdt;
 pub mod graphics;
 pub mod interrupts;
 pub mod logger;
-pub mod memory;
+pub mod mem;
 pub mod prelude;
 pub mod serial;
 
@@ -76,10 +75,10 @@ pub fn init(boot_info: &'static mut bootloader_api::BootInfo) {
         unsafe {
             let phys_mem_offset =
                 VirtAddr::new(boot_info.physical_memory_offset.into_option().unwrap());
-            let mut mapper = memory::init(phys_mem_offset);
+            let mut mapper = mem::init(phys_mem_offset);
             let mut frame_allocator = BootInfoFrameAllocator::init(&boot_info.memory_regions);
 
-            allocator::init_heap(&mut mapper, &mut frame_allocator)
+            mem::allocator::init_heap(&mut mapper, &mut frame_allocator)
                 .expect("heap initialization failed");
         }
 
