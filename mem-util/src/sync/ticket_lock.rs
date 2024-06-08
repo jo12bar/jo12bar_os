@@ -116,6 +116,15 @@ impl<T: Send, I: InterruptState> LockCell<T> for TicketLock<T, I> {
             _phantom: PhantomData,
         }
     }
+
+    #[track_caller]
+    fn try_lock(&self) -> Option<LockCellGuard<'_, T, Self>> {
+        if self.owner.load(Ordering::Acquire) == !0 {
+            Some(self.lock())
+        } else {
+            None
+        }
+    }
 }
 
 impl<T, I: InterruptState> LockCellInternal<T> for TicketLock<T, I> {
@@ -271,6 +280,7 @@ impl<T: Send, I: InterruptState> RwLockCell<T> for RwTicketLock<T, I> {
 }
 
 impl<T: Send, I: InterruptState> LockCell<T> for RwTicketLock<T, I> {
+    #[track_caller]
     fn lock(&self) -> LockCellGuard<'_, T, Self> {
         assert!(
             !self.preemtable || !I::in_interrupt(),
@@ -301,6 +311,15 @@ impl<T: Send, I: InterruptState> LockCell<T> for RwTicketLock<T, I> {
         LockCellGuard {
             lockcell: self,
             _phantom: PhantomData,
+        }
+    }
+
+    #[track_caller]
+    fn try_lock(&self) -> Option<LockCellGuard<'_, T, Self>> {
+        if self.access_count.load(Ordering::SeqCst) == 0 {
+            Some(self.lock())
+        } else {
+            None
         }
     }
 }

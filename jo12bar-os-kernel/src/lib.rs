@@ -7,13 +7,11 @@
 
 extern crate alloc;
 
-use core::{
-    ptr,
-    sync::atomic::{self, AtomicU8},
-};
+use core::ptr;
 
 use bootloader_api::BootInfo;
-use mem_util::{types::CoreId, KiB};
+use core_locals::core_boot;
+use mem_util::KiB;
 use memory::BootInfoFrameAllocator;
 use x86_64::{
     structures::paging::{PageSize, Size4KiB},
@@ -21,22 +19,15 @@ use x86_64::{
 };
 
 pub mod allocator;
+pub mod core_locals;
+pub mod cpu;
 pub mod gdt;
 pub mod graphics;
 pub mod interrupts;
 pub mod logger;
 pub mod memory;
+pub mod prelude;
 pub mod serial;
-
-/// A counter used to sign an ID for each core.
-///
-/// Each core called [AtomicU8::fetch_add] to get its ID and automatically
-/// increment it for the next core ensuring IDs are unique.
-///
-/// As a side-effect, this is also the number of cores that have been started.
-///
-/// TODO: Implement actually booting more than one core :)
-static CORE_ID_COUNTER: AtomicU8 = AtomicU8::new(0);
 
 /// Contains the [BootInfo] provided by the Bootloader
 ///
@@ -64,53 +55,53 @@ pub fn init(boot_info: &'static mut bootloader_api::BootInfo) {
         BOOT_INFO = boot_info;
     }
 
-    let core_id: CoreId = CORE_ID_COUNTER
-        .fetch_add(1, atomic::Ordering::AcqRel)
-        .into();
+    // Safety: `init` is only called once per core, and is matched with a single `core_boot`.
+    let core_id = unsafe { core_boot() };
 
-    serial_print!("booting core {core_id}... ");
+    if core_id.is_bsp() {
+        // // Safety: This is the bootstrap processor, and we're initializing
+        // serial::init_serial_ports();
 
+        // Safety: This is the bootstrap processor, we're initializing, and serial
+        // ports are initialized.
+        unsafe { logger::init() };
+
+        // // Safety: inherently unsafe and can crash, but if cpuid isn't supported
+        // // we will crash at some point in the future anyways, so we might as well
+        // // crash early
+        // cpuid::check_cpuid_usable();
+
+        // Initialize memory.
+        // Safety: This is the bootstrap processor, and locks and logging are working
+        unsafe {
+            let phys_mem_offset =
+                VirtAddr::new(boot_info.physical_memory_offset.into_option().unwrap());
+            let mut mapper = memory::init(phys_mem_offset);
+            let mut frame_allocator = BootInfoFrameAllocator::init(&boot_info.memory_regions);
+
+            allocator::init_heap(&mut mapper, &mut frame_allocator)
+                .expect("heap initialization failed");
+        }
+
+        // Safety: This is the bootstrap processor, and logging and alloc are working
+        unsafe { graphics::init(true) };
+    } /* else {
+          unsafe {
+              // Safety: inherently unsafe and can crash, but if cpuid isn't supported
+              // we will crash at some point in the future anyways, so we might as well
+              // crash early
+              cpuid::check_cpuid_usable();
+          }
+      } */
+
+    // Safety: This is called after `core_boot()`, and we have initialized memory and logging.
+    unsafe {
+        core_locals::init(core_id);
+    }
+
+    // Enable interrupts for this processor
     gdt::init();
-    interrupts::init_idt();
-    unsafe { interrupts::PICS.lock().initialize() };
-    x86_64::instructions::interrupts::enable();
-
-    serial_println!("done");
-    serial_print!("initializing logger... ");
-
-    // Safety: Serial should be initialized by now
-    unsafe {
-        logger::init();
-    }
-
-    serial_println!("done");
-    serial_print!("initializing BootInfoFrameAllocator... ");
-
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().unwrap());
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_regions) };
-
-    serial_println!("done");
-    serial_print!("initializing kernel heap... ");
-
-    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
-
-    serial_println!("done");
-    serial_print!("initializing graphics stack... ");
-
-    // Safety: logging and alloc should be working
-    unsafe {
-        graphics::init(true);
-    }
-
-    serial_println!("done");
-}
-
-/// Loop endlessly, executing the x86 `hlt` instruction.
-pub fn hlt_loop() -> ! {
-    loop {
-        x86_64::instructions::hlt();
-    }
+    interrupts::init();
 }
 
 /// Default kernel stack size (80 KiB)

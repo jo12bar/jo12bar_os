@@ -19,6 +19,11 @@ where
 {
     /// Get access to the value of this lock. Blocks until access is granted.
     fn lock(&self) -> LockCellGuard<'_, T, Self>;
+
+    /// Attempt to acquire a lock without blocking.
+    ///
+    /// If the lock could not be acquired at this time, then `None` is returned.
+    fn try_lock(&self) -> Option<LockCellGuard<'_, T, Self>>;
 }
 
 /// A trait representing a read-write lock that allows for either simultaneous
@@ -383,6 +388,15 @@ impl<T: Send, L: LockCell<MaybeUninit<T>>> LockCell<T> for UnwrapLockCell<T, L> 
         let inner_guard = self.lockcell.lock();
         core::mem::forget(inner_guard);
         unsafe { LockCellGuard::new(self) }
+    }
+
+    fn try_lock(&self) -> Option<LockCellGuard<'_, T, Self>> {
+        if let Some(inner_guard) = self.lockcell.try_lock() {
+            core::mem::forget(inner_guard);
+            unsafe { Some(LockCellGuard::new(self)) }
+        } else {
+            None
+        }
     }
 }
 

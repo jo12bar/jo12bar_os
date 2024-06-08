@@ -1,6 +1,7 @@
 //! Global Descriptor Table setup and configuration.
 
 use lazy_static::lazy_static;
+use mem_util::KiB;
 use x86_64::structures::gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector};
 use x86_64::structures::tss::TaskStateSegment;
 use x86_64::VirtAddr;
@@ -15,6 +16,9 @@ use x86_64::{
 /// Index of the double_fault interrupt handler's stack in the Interrupt Stack Table.
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 
+/// Index of the page_fault interrupt handler's stack in the Interrup Stack Table.
+pub const PAGE_FAULT_IST_INDEX: u16 = 1;
+
 lazy_static! {
     /// The task state segment, which holds the privlege stack table, interrupt
     /// stack table, and I/O map base address.
@@ -22,7 +26,15 @@ lazy_static! {
         let mut tss = TaskStateSegment::new();
 
         tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = {
-            const STACK_SIZE: usize = 4096 * 5;
+            const STACK_SIZE: usize = KiB!(20);
+            static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
+
+            let stack_start = VirtAddr::from_ptr(unsafe { core::ptr::addr_of!(STACK) });
+            stack_start + STACK_SIZE as _
+        };
+
+        tss.interrupt_stack_table[PAGE_FAULT_IST_INDEX as usize] = {
+            const STACK_SIZE: usize = KiB!(20);
             static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
 
             let stack_start = VirtAddr::from_ptr(unsafe { core::ptr::addr_of!(STACK) });

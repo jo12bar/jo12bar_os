@@ -1,11 +1,11 @@
 //! Interrupt setup and handlers.
 
 use lazy_static::lazy_static;
+use log::debug;
 use pic8259::ChainedPics;
-use spinning_top::Spinlock;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
-use crate::{gdt, hlt_loop, serial_print};
+use crate::{cpu::halt, gdt, locals, prelude::*, serial_print};
 
 /// Interrupt vector number offset for the primary Programmable Interrupt Controller.
 pub const PIC_1_OFFSET: u8 = 32;
@@ -13,8 +13,8 @@ pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
 /// Two chained Programmable Interrupt Controllers.
-pub static PICS: Spinlock<ChainedPics> =
-    Spinlock::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
+pub static PICS: TicketLock<ChainedPics> =
+    TicketLock::new_non_preemtable(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
 
 /// Interrupt indexes in the Interrupt Descriptor Table, past the first 32 pre-defined CPU indices.
 #[allow(missing_docs)]
@@ -42,25 +42,47 @@ lazy_static! {
 
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         unsafe {
-            idt.double_fault.set_handler_fn(double_fault_handler)
+            idt.double_fault
+                .set_handler_fn(double_fault_handler)
                 .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
+            idt.page_fault
+                .set_handler_fn(page_fault_handler)
+                .set_stack_index(gdt::PAGE_FAULT_IST_INDEX);
         }
+
         idt[InterruptIndex::Timer.as_u8()]
             .set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard.as_u8()]
             .set_handler_fn(keyboard_interrupt_handler);
-        idt.page_fault.set_handler_fn(page_fault_handler);
 
         idt
     };
 }
 
-/// Initialize the [`InterruptDescriptorTable`].
-pub fn init_idt() {
+/// Initialize the [`InterruptDescriptorTable`] and enable interrupts.
+pub fn init() {
+    debug!("Loading IDT");
     IDT.load();
+
+    debug!("Initializing chained PICs");
+    // Safety: locks are working
+    unsafe { PICS.lock().initialize() };
+
+    debug!("Enabling interrupts");
+    // Safety: Necessary setup for the kernel should've been finished by now,
+    // so enabling interrupts should be fine
+    unsafe {
+        locals!().enable_interrupts();
+    }
+    assert!(
+        locals!().interrupts_enabled(),
+        "somehow interrupts weren't properly enabled!"
+    );
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
+    let _guard = crate::locals!().inc_exception();
+
     log::info!("EXCEPTION: BREAKPOINT\n{stack_frame:#?}");
 }
 
@@ -68,11 +90,15 @@ extern "x86-interrupt" fn double_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) -> ! {
-    panic!("EXCEPTION: DOUBLE FAULT (error_code={error_code})\n{stack_frame:#?}");
+    let _guard = crate::locals!().inc_exception();
+
+    panic!("EXCEPTION: DOUBLE FAULT (error_code=0x{error_code:x})\n{stack_frame:#?}");
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     use core::fmt::Write;
+
+    let _guard = crate::locals!().inc_interrupt();
 
     unsafe {
         if let Some(Some(l)) = core::ptr::addr_of!(crate::logger::LOGGER).as_ref() {
@@ -96,8 +122,10 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
     use x86_64::instructions::port::Port;
 
-    static KEYBOARD: Spinlock<Keyboard<layouts::Us104Key, ScancodeSet1>> =
-        Spinlock::new(Keyboard::new(
+    let _guard = crate::locals!().inc_interrupt();
+
+    static KEYBOARD: TicketLock<Keyboard<layouts::Us104Key, ScancodeSet1>> =
+        TicketLock::new_non_preemtable(Keyboard::new(
             ScancodeSet1::new(),
             layouts::Us104Key,
             HandleControl::Ignore,
@@ -133,6 +161,8 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
 
+    let _guard = crate::locals!().inc_exception();
+
     log::warn!(
         "EXCEPTION: Page fault\n    \
         Accessed address: {:?}\n    \
@@ -141,5 +171,5 @@ extern "x86-interrupt" fn page_fault_handler(
         Cr2::read(),
     );
 
-    hlt_loop();
+    halt();
 }

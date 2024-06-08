@@ -1,17 +1,18 @@
 //! Utilities for communication over serial ports (primarily logging).
 
 use lazy_static::lazy_static;
-use spinning_top::Spinlock;
 use uart_16550::SerialPort;
 use x86_64::instructions::interrupts;
 
+use crate::prelude::*;
+
 lazy_static! {
     /// The global UART serial port protected by a spinlock.
-    pub static ref SERIAL1: Spinlock<SerialPort> = {
+    pub static ref SERIAL1: TicketLock<SerialPort> = {
         // Safety: 0x3F8 is the standard port number for the first serial interface on x86.
         let mut serial_port = unsafe { SerialPort::new(0x3F8) };
         serial_port.init();
-        Spinlock::new(serial_port)
+        TicketLock::new_non_preemtable(serial_port)
     };
 }
 

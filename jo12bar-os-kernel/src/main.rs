@@ -11,7 +11,10 @@ extern crate alloc;
 use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use core::panic::PanicInfo;
 
-use jo12bar_os_kernel::{bootloader_config_common, dbg, graphics, hlt_loop, init, logger::LOGGER};
+use jo12bar_os_kernel::{
+    bootloader_config_common, core_locals::CoreInterruptState, cpu::halt, dbg, graphics, init,
+    logger::LOGGER,
+};
 
 /// Configuration for the bootloader.
 const BOOTLOADER_CONFIG: bootloader_api::BootloaderConfig = {
@@ -52,6 +55,7 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
 
     dbg!();
     dbg!(&graphics::framebuffer::HARDWARE_FRAMEBUFFER);
+    dbg!(&CoreInterruptState);
 
     log::trace!("Test trace log");
     log::debug!("Test debug log");
@@ -59,7 +63,7 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     log::warn!("Test warn log");
     log::error!("Test error log");
 
-    hlt_loop();
+    halt();
 }
 
 /// Called on panic.
@@ -72,5 +76,5 @@ fn panic(info: &PanicInfo) -> ! {
     }
     // unsafe { jo12bar_os_kernel::exit_qemu(jo12bar_os_kernel::QemuExitCode::Failure) };
     log::error!("{}", info);
-    hlt_loop();
+    halt();
 }

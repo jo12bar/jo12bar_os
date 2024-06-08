@@ -49,4 +49,7 @@ pub trait InterruptState: 'static {
     ///   invocation of [`InterruptState::enter_critical_section()`] with the
     ///   same parameter as passed to this function.
     unsafe fn exit_critical_section(enable_interrupts: bool);
+
+    /// Returns the instance of this interrupt state. Must always be a zero-sized type (ZST).
+    fn instance() -> Self;
 }

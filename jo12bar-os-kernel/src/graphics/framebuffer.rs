@@ -6,17 +6,15 @@ use bootloader_api::info::{FrameBuffer as BootFrameBuffer, FrameBufferInfo, Pixe
 use embedded_graphics::{
     draw_target::DrawTarget, geometry::OriginDimensions, pixelcolor::Rgb888, prelude::*,
 };
-use spinning_top::Spinlock;
 use x86_64::VirtAddr;
+
+use crate::prelude::TicketLock;
 
 use super::canvas::Canvas;
 
 /// The main hardware-backed framebuffer. This can be taken, at which point it
 /// will be `None`.
-///
-/// TODO: Investigate using a [ticket lock](https://en.wikipedia.org/wiki/Ticket_lock)
-/// instead of a spinlock.
-pub static HARDWARE_FRAMEBUFFER: Spinlock<Option<Framebuffer>> = Spinlock::new(None);
+pub static HARDWARE_FRAMEBUFFER: TicketLock<Option<Framebuffer>> = TicketLock::new(None);
 
 /// Different memory sources for the [`Framebuffer`].
 #[derive(Debug)]

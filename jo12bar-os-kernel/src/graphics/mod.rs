@@ -7,7 +7,7 @@ use core::slice;
 
 use embedded_graphics::{mono_font::ascii::FONT_8X13, prelude::*};
 
-use crate::{graphics::tty::color, logger::LOGGER};
+use crate::{graphics::tty::color, logger::LOGGER, prelude::*};
 
 use self::{
     canvas::CanvasWriter,

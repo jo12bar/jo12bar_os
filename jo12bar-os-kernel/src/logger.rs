@@ -8,11 +8,12 @@
 use core::fmt::Write;
 
 use log::{info, LevelFilter};
-use spinning_top::{lock_api::MutexGuard, RawSpinlock, Spinlock};
+use mem_util::sync::lock_cell::LockCellInternal;
 use x86_64::instructions::interrupts::{self, without_interrupts};
 
 use crate::{
     graphics::{canvas::CanvasWriter, framebuffer::Framebuffer},
+    prelude::*,
     serial_println,
 };
 
@@ -25,12 +26,23 @@ pub static mut LOGGER: Option<HackyLogger> = None;
 /// A hacky, baseline logger that just outputs to the hardware framebuffer.
 #[derive(Default)]
 pub struct HackyLogger {
-    canvas_writer: Spinlock<Option<CanvasWriter<'static, Framebuffer>>>,
+    canvas_writer: TicketLock<Option<CanvasWriter<'static, Framebuffer>>>,
 }
+
+/// The result of calling [`HackyLogger::try_lock`].
+pub type HackyLoggerTryLockOption<'a> = Option<
+    LockCellGuard<
+        'a,
+        Option<CanvasWriter<'static, Framebuffer>>,
+        TicketLock<Option<CanvasWriter<'static, Framebuffer>>>,
+    >,
+>;
 
 impl HackyLogger {
     fn new() -> Self {
-        Self::default()
+        Self {
+            canvas_writer: TicketLock::new_non_preemtable(Default::default()),
+        }
     }
 
     /// Replace the current [`CanvasWriter`] with a new one.
@@ -63,9 +75,7 @@ impl HackyLogger {
     ///
     /// See also [`Spinlock::try_lock`].
     #[inline]
-    pub fn try_lock(
-        &self,
-    ) -> Option<MutexGuard<'_, RawSpinlock, Option<CanvasWriter<'static, Framebuffer>>>> {
+    pub fn try_lock(&self) -> HackyLoggerTryLockOption<'_> {
         self.canvas_writer.try_lock()
     }
 }
