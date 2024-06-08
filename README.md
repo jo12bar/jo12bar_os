@@ -1,4 +1,4 @@
-# `jo12bar_os` - Embedded ARM OS based on Philipp Oppermann's [`blog_os`][blog_os_link]
+# `jo12bar_os` - x86 OS based on Philipp Oppermann's [`blog_os`][blog_os_link]
 
 Basically just a version of [`blog_os`][blog_os_link] with some personal tweaks, and including some of the "3rd Addition" changes. The goal is to support both UEFI and BIOS booting.
 
