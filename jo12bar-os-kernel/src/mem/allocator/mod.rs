@@ -1,8 +1,7 @@
 //! Memory allocation.
 
-use alloc::alloc::{GlobalAlloc, Layout};
-use core::ptr;
-use linked_list_allocator::LockedHeap;
+use alloc::alloc::Layout;
+use core::ops;
 use mem_util::KiB;
 use x86_64::{
     structures::paging::{
@@ -11,26 +10,49 @@ use x86_64::{
     VirtAddr,
 };
 
+use crate::prelude::*;
+
+pub mod bump;
+
 #[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+static ALLOCATOR: LockedAllocator<bump::BumpAllocator> =
+    LockedAllocator::new(bump::BumpAllocator::new());
 
 /// Start (virtual) address of the kernel's heap
 pub const HEAP_START: VirtAddr = VirtAddr::new(0x4444_4444_0000);
 /// Size of the kernel's heap
 pub const HEAP_SIZE: usize = KiB!(100);
 
-/// A dummy allocator that always errors when [`Dummy::alloc()`] is called.
-pub struct Dummy;
+struct LockedAllocator<A> {
+    inner: TicketLock<A>,
+}
 
-// Safety: This allocator always returns errors, and never actually allocates anything.
-unsafe impl GlobalAlloc for Dummy {
-    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-        ptr::null_mut()
+impl<A> LockedAllocator<A> {
+    pub const fn new(inner: A) -> Self {
+        Self {
+            inner: TicketLock::new_non_preemtable(inner),
+        }
     }
+}
 
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        panic!("dummy allocator does not support deallocation, and dealloc should never be called");
+impl<A> ops::Deref for LockedAllocator<A> {
+    type Target = TicketLock<A>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
+}
+
+impl<A> ops::DerefMut for LockedAllocator<A> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+/// Align the given address `addr` upwards to alignment given by `layout`.
+const fn align_up(addr: usize, layout: &Layout) -> usize {
+    let align = layout.align();
+    (addr + align - 1) & !(align - 1)
 }
 
 /// Initialize the kernel's heap.
@@ -56,7 +78,7 @@ pub fn init_heap(
     }
 
     unsafe {
-        ALLOCATOR.lock().init(HEAP_START.as_mut_ptr(), HEAP_SIZE);
+        ALLOCATOR.lock().init(HEAP_START.as_u64() as _, HEAP_SIZE);
     }
 
     Ok(())
