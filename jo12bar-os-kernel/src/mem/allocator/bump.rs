@@ -3,6 +3,7 @@
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::ptr::{self, NonNull};
 use log::trace;
+use x86_64::VirtAddr;
 
 use super::LockedAllocator;
 use crate::prelude::*;
@@ -49,13 +50,13 @@ impl BumpAllocator {
     ///
     /// # Safety
     /// Must only be called once.
-    pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
+    pub unsafe fn init(&mut self, heap_start: VirtAddr, heap_size: u64) {
         trace!(
             "Initializing bump allocator, heap_start=0x{heap_start:x}, heap_end=0x{:x}, heap_size=0x{heap_size:x}",
             heap_start + heap_size
         );
-        self.start = heap_start as *mut u8;
-        self.end = (heap_start + heap_size) as *mut u8;
+        self.start = heap_start.as_mut_ptr();
+        self.end = (heap_start + heap_size).as_mut_ptr();
         self.ptr = self.end;
     }
 

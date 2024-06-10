@@ -21,7 +21,7 @@ static ALLOCATOR: LockedAllocator<bump::BumpAllocator> =
 /// Start (virtual) address of the kernel's heap
 pub const HEAP_START: VirtAddr = VirtAddr::new(0x4444_4444_0000);
 /// Size of the kernel's heap
-pub const HEAP_SIZE: usize = KiB!(100);
+pub const HEAP_SIZE: u64 = KiB!(100);
 
 struct LockedAllocator<A> {
     inner: TicketLock<A>,
@@ -78,7 +78,7 @@ pub fn init_heap(
     }
 
     unsafe {
-        ALLOCATOR.lock().init(HEAP_START.as_u64() as _, HEAP_SIZE);
+        ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
     }
 
     Ok(())
