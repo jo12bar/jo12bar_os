@@ -1,6 +1,5 @@
 //! Memory allocation.
 
-use alloc::alloc::Layout;
 use core::ops;
 use mem_util::KiB;
 use x86_64::{
@@ -13,10 +12,11 @@ use x86_64::{
 use crate::prelude::*;
 
 pub mod bump;
+pub mod linked_list;
 
 #[global_allocator]
-static ALLOCATOR: LockedAllocator<bump::BumpAllocator> =
-    LockedAllocator::new(bump::BumpAllocator::new());
+static ALLOCATOR: LockedAllocator<linked_list::LinkedListAllocator> =
+    LockedAllocator::new(linked_list::LinkedListAllocator::new());
 
 /// Start (virtual) address of the kernel's heap
 pub const HEAP_START: VirtAddr = VirtAddr::new(0x4444_4444_0000);
@@ -47,12 +47,6 @@ impl<A> ops::DerefMut for LockedAllocator<A> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
-}
-
-/// Align the given address `addr` upwards to alignment given by `layout`.
-const fn align_up(addr: usize, layout: &Layout) -> usize {
-    let align = layout.align();
-    (addr + align - 1) & !(align - 1)
 }
 
 /// Initialize the kernel's heap.
