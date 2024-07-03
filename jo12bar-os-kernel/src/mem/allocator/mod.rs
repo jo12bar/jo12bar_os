@@ -12,25 +12,30 @@ use x86_64::{
 use crate::prelude::*;
 
 pub mod bump;
+pub mod fixed_size_block;
 pub mod linked_list;
 
+/// The global allocator, protected by a [`TicketLock`] (with some layers of indirection).
 #[global_allocator]
-static ALLOCATOR: LockedAllocator<linked_list::LinkedListAllocator> =
-    LockedAllocator::new(linked_list::LinkedListAllocator::new());
+pub static ALLOCATOR: LockedAllocator<fixed_size_block::FixedSizeBlockAllocator> =
+    LockedAllocator::new(fixed_size_block::FixedSizeBlockAllocator::new());
 
 /// Start (virtual) address of the kernel's heap
 pub const HEAP_START: VirtAddr = VirtAddr::new(0x4444_4444_0000);
 /// Size of the kernel's heap
 pub const HEAP_SIZE: u64 = KiB!(100);
 
-struct LockedAllocator<A> {
+/// A wrapper around an allocator to allow implementing [`alloc::alloc::GlobalAlloc`].
+#[derive(Debug)]
+pub struct LockedAllocator<A> {
     inner: TicketLock<A>,
 }
 
 impl<A> LockedAllocator<A> {
+    /// Create a new ticket-locked allocator.
     pub const fn new(inner: A) -> Self {
         Self {
-            inner: TicketLock::new_non_preemtable(inner),
+            inner: TicketLock::new(inner),
         }
     }
 }

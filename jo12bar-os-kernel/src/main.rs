@@ -14,7 +14,7 @@ use log::{debug, error, info, trace, warn};
 
 use jo12bar_os_kernel::{
     bootloader_config_common, core_locals::CoreInterruptState, cpu::halt, dbg, graphics, init,
-    logger::LOGGER,
+    logger::LOGGER, prelude::*,
 };
 
 /// Configuration for the bootloader.
@@ -32,6 +32,14 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     }
 
     init(boot_info);
+
+    info!("Kernel initialized");
+
+    debug!("Here's the allocator before any allocations:");
+    dbg!(&jo12bar_os_kernel::mem::allocator::ALLOCATOR);
+    if let Some(a) = jo12bar_os_kernel::mem::allocator::ALLOCATOR.try_lock() {
+        dbg!(&*a);
+    }
 
     // Allocate a number on the heap
     let heap_value = Box::new(41);
@@ -64,7 +72,11 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
         }
     }
 
-    info!("Kernel initialized");
+    debug!("Here's the allocator after several allocations:");
+    dbg!(&jo12bar_os_kernel::mem::allocator::ALLOCATOR);
+    if let Some(a) = jo12bar_os_kernel::mem::allocator::ALLOCATOR.try_lock() {
+        dbg!(&*a);
+    }
 
     dbg!();
     dbg!(&graphics::framebuffer::HARDWARE_FRAMEBUFFER);
