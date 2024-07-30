@@ -29,6 +29,7 @@ lazy_static! {
             const STACK_SIZE: usize = KiB!(20);
             static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
 
+            #[allow(unused_unsafe)] // TODO(jo12bar): rust started complaining about the unsafe block, even though it's required
             let stack_start = VirtAddr::from_ptr(unsafe { core::ptr::addr_of!(STACK) });
             stack_start + STACK_SIZE as _
         };
@@ -37,6 +38,7 @@ lazy_static! {
             const STACK_SIZE: usize = KiB!(20);
             static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
 
+            #[allow(unused_unsafe)] // TODO(jo12bar): rust started complaining about the unsafe block, even though it's required
             let stack_start = VirtAddr::from_ptr(unsafe { core::ptr::addr_of!(STACK) });
             stack_start + STACK_SIZE as _
         };
