@@ -18,8 +18,10 @@ default = []
 mem-util = { path = "../mem-util" }
 
 bootloader_api.workspace = true
+crossbeam-queue.workspace = true
 derive_builder.workspace = true
 embedded-graphics = "0.8.1"
+futures-util.workspace = true
 # bootloader-x86_64-common = "0.11.7"
 log = { version = "0.4.21", default-features = false }
 conquer-once = { version = "0.4.0", default-features = false }

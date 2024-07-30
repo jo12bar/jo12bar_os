@@ -119,35 +119,13 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 }
 
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
     use x86_64::instructions::port::Port;
 
     let _guard = crate::locals!().inc_interrupt();
 
-    static KEYBOARD: TicketLock<Keyboard<layouts::Us104Key, ScancodeSet1>> =
-        TicketLock::new_non_preemtable(Keyboard::new(
-            ScancodeSet1::new(),
-            layouts::Us104Key,
-            HandleControl::Ignore,
-        ));
-
-    let mut keyboard = KEYBOARD.lock();
     let mut port = Port::new(0x60);
-
     let scancode: u8 = unsafe { port.read() };
-    if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
-        if let Some(key) = keyboard.process_keyevent(key_event) {
-            match key {
-                DecodedKey::Unicode('\x1B') => {
-                    log::trace!("received keyboard interrupt, char=<ESC>")
-                }
-                DecodedKey::Unicode(character) => {
-                    log::trace!("received keyboard interrupt, char={character}")
-                }
-                DecodedKey::RawKey(key) => log::trace!("received keyboard interrupt, key={key:?}"),
-            }
-        }
-    }
+    crate::task::keyboard::add_scancode(scancode);
 
     unsafe {
         PICS.lock()
