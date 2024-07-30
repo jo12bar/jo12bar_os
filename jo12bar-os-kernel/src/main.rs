@@ -13,8 +13,13 @@ use core::panic::PanicInfo;
 use log::{debug, error, info, trace, warn};
 
 use jo12bar_os_kernel::{
-    bootloader_config_common, core_locals::CoreInterruptState, cpu::halt, dbg, graphics, init,
-    logger::LOGGER, prelude::*,
+    bootloader_config_common,
+    core_locals::CoreInterruptState,
+    cpu::halt,
+    dbg, graphics, init,
+    logger::LOGGER,
+    prelude::*,
+    task::{simple_executor::SimpleExecutor, Task},
 };
 
 /// Configuration for the bootloader.
@@ -88,7 +93,20 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     warn!("Test warn log");
     error!("Test error log");
 
+    let mut executor = SimpleExecutor::new();
+    executor.spawn(Task::new(example_task()));
+    executor.run();
+
     halt();
+}
+
+async fn async_number() -> u32 {
+    42
+}
+
+async fn example_task() {
+    let number = async_number().await;
+    log::info!("async number: {number}");
 }
 
 /// Called on panic.

@@ -27,6 +27,7 @@ pub mod logger;
 pub mod mem;
 pub mod prelude;
 pub mod serial;
+pub mod task;
 
 /// Contains the [BootInfo] provided by the Bootloader
 ///
