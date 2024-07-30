@@ -58,6 +58,21 @@ mod instructions {
         interrupts::enable();
     }
 
+    /// Enables interrupts and `hlt`s as a single atomic operation.
+    ///
+    /// When possible `locals!().enable_interrupts()` should be used instead.
+    ///
+    /// ## See
+    /// [crate::core_local::CoreLocals]
+    /// [crate::locals]
+    ///
+    /// # Safety
+    /// Caller must ensure that enabling interrupts won't violate any safety guarantees.
+    #[inline(always)]
+    pub unsafe fn enable_interrupts_and_hlt() {
+        interrupts::enable_and_hlt();
+    }
+
     /// Get the current GS segment base.
     #[inline]
     pub fn get_gs_base() -> u64 {

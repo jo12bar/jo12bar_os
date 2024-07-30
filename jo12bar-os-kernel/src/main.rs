@@ -19,7 +19,7 @@ use jo12bar_os_kernel::{
     dbg, graphics, init,
     logger::LOGGER,
     prelude::*,
-    task::{keyboard, simple_executor::SimpleExecutor, Task},
+    task::{keyboard, Executor, Task},
 };
 
 /// Configuration for the bootloader.
@@ -93,9 +93,9 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     warn!("Test warn log");
     error!("Test error log");
 
-    let mut executor = SimpleExecutor::new();
-    executor.spawn(Task::new(example_task()));
-    executor.spawn(Task::new(keyboard::print_keypresses()));
+    let mut executor = Executor::new();
+    executor.spawn(example_task());
+    executor.spawn(keyboard::print_keypresses());
     executor.run();
 
     halt();

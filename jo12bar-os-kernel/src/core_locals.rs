@@ -230,6 +230,40 @@ impl CoreLocals {
         }
     }
 
+    /// Try to enable interrupts if possible, and then immediately `hlt` as a single atomic operation
+    /// to avoid race conditions.
+    ///
+    /// This will decrement [Self::interrupt_depth] and will only enable interrupts
+    /// when `interrupt_depth == 0`.
+    ///
+    /// Also interrupts will never be enabled if we are currently inside an interrupt.
+    /// In that case exiting the interrupt will reenable interrupts.
+    ///
+    /// # Safety
+    /// - Must be called once for each call to [`CoreLocals::disable_interrupts()`].
+    /// - Caller must ensure that the interrupts themselves are safe.
+    pub unsafe fn enable_interrupts_and_hlt(&self) {
+        let old_disable_count = self
+            .interrupts_disable_count
+            .fetch_sub(1, atomic::Ordering::SeqCst);
+
+        // If we're not already in an interrupt, and we decremented the
+        // interrupt outstanding to 0, we can actually enable interrupts.
+        //
+        // Since it's possible interrupts can be enabled when we enter an
+        // interrupt, if we acquire a lock in an interrupt and release it it
+        // may attempt to re-enable interrupts. Thus, we never allow enabling
+        // interrupts from an interrupt handler. This means interrupts will
+        // correctly get re-enabled in this case when the IRET loads the old
+        // interrupt flag as part of the EFLAGS register.
+        if old_disable_count == 1 && !self.in_interrupt() {
+            // Safety: Not currently in an interrupt, and the outstanding interrupt count is 0
+            unsafe {
+                cpu::enable_interrupts_and_hlt();
+            }
+        }
+    }
+
     /// Disable interrupts and increment [Self::interrupt_depth].
     ///
     /// # Safety
